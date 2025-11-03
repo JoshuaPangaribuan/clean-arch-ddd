@@ -1,0 +1,403 @@
+# Clean Architecture + DDD Template (Golang)
+
+A production-ready Golang project template implementing Clean Architecture and Domain-Driven Design (DDD) principles. This template provides a solid foundation for building scalable and maintainable backend applications.
+
+## 🏗️ Architecture Overview
+
+This template follows **Clean Architecture** principles with **Domain-Driven Design** patterns, organizing code into distinct layers with clear responsibilities:
+
+### Layers
+
+```
+┌─────────────────────────────────────────┐
+│         Delivery Layer (HTTP)           │  ← Gin Handlers, Middleware
+├─────────────────────────────────────────┤
+│       Application Layer (Use Cases)     │  ← Business workflows, DTOs
+├─────────────────────────────────────────┤
+│         Domain Layer (Entities)         │  ← Business logic, Rules
+├─────────────────────────────────────────┤
+│    Infrastructure (Persistence, Config) │  ← Database, External services
+└─────────────────────────────────────────┘
+```
+
+#### 1. **Domain Layer** (`internal/domain/`)
+- **Pure business logic** with no external dependencies
+- **Entities**: Core business objects with identity and lifecycle
+- **Value Objects**: Immutable objects defined by their attributes
+- **Repository Interfaces**: Contracts for data persistence (not implementations)
+
+#### 2. **Application Layer** (`internal/application/`)
+- **Use Cases**: Orchestrate business workflows
+- **DTOs**: Data transfer objects for input/output
+- Depends on Domain layer only
+
+#### 3. **Infrastructure Layer** (`internal/infrastructure/`)
+- **Persistence**: Repository implementations using sqlc
+- **Delivery**: HTTP handlers using Gin
+- **Config**: Application configuration management
+- Implements interfaces defined in Domain layer
+
+#### 4. **Bootstrap** (`cmd/api/main.go`)
+- Application entry point
+- Dependency injection
+- Wire all components together
+
+### Key Design Principles
+
+- **Dependency Inversion**: Inner layers define interfaces, outer layers implement them
+- **Separation of Concerns**: Each layer has a single, well-defined responsibility
+- **Testability**: Business logic isolated from infrastructure (easily mockable)
+- **Domain-Centric**: Business rules live in the domain, not scattered across layers
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Go 1.21 or higher
+- Docker & Docker Compose
+- Make (optional, but recommended)
+
+### 1. Clone and Setup
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd clean-arch-ddd
+
+# Install dependencies
+make deps
+```
+
+### 2. Start Database
+
+```bash
+# Start PostgreSQL using Docker Compose
+make docker-up
+```
+
+### 3. Run Database Migrations
+
+```bash
+# Apply migrations
+make migrate-up
+```
+
+### 4. Run the Application
+
+```bash
+# Run the API server
+make run
+```
+
+The server will start on `http://localhost:8080`
+
+### 5. Test the API
+
+**Health Check:**
+```bash
+curl http://localhost:8080/health
+```
+
+**Create a Product:**
+```bash
+curl -X POST http://localhost:8080/api/v1/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Laptop",
+    "price_amount": 999.99,
+    "price_currency": "USD"
+  }'
+```
+
+**Get a Product:**
+```bash
+curl http://localhost:8080/api/v1/products/{product-id}
+```
+
+## 📁 Project Structure
+
+```
+.
+├── cmd/
+│   └── api/
+│       └── main.go                 # Application entry point
+│
+├── internal/                        # Private application code
+│   ├── domain/                      # 🔵 DOMAIN LAYER
+│   │   └── product/
+│   │       ├── entity.go            # Product entity with business logic
+│   │       ├── valueobject.go       # Price value object
+│   │       └── repository.go        # Repository interface (no implementation)
+│   │
+│   ├── application/                 # 🟢 APPLICATION LAYER
+│   │   └── product/
+│   │       ├── create.go            # CreateProduct use case
+│   │       ├── get.go               # GetProduct use case
+│   │       ├── dto.go               # Input/Output DTOs
+│   │       ├── create_test.go       # Unit tests
+│   │       └── get_test.go          # Unit tests
+│   │
+│   ├── infrastructure/              # 🟡 INFRASTRUCTURE LAYER
+│   │   ├── persistence/             # Database implementations
+│   │   │   ├── product_repository.go  # Repository implementation
+│   │   │   └── sqlcgen/             # Generated sqlc code
+│   │   ├── delivery/                # HTTP layer
+│   │   │   ├── product_handler.go   # HTTP handlers
+│   │   │   └── middleware.go        # Logging, error handling, CORS
+│   │   └── config/
+│   │       └── config.go            # Configuration management
+│   │
+│   └── shared/                      # Shared utilities
+│       └── model/
+│           └── response.go          # API response models
+│
+├── migrations/                      # Database migrations
+│   ├── 000001_create_products_table.up.sql
+│   └── 000001_create_products_table.down.sql
+│
+├── query/                           # SQL queries for sqlc
+│   └── product.sql
+│
+├── mocks/                           # Generated mocks (mockery)
+│   └── ProductRepository.go
+│
+├── pkg/                             # Public reusable code
+├── api/                             # API documentation
+├── docker-compose.yml               # Local development environment
+├── Makefile                         # Common commands
+├── sqlc.yaml                        # sqlc configuration
+└── README.md                        # This file
+```
+
+## 🛠️ Available Commands
+
+```bash
+make deps            # Install dependencies
+make run             # Run the application
+make build           # Build the binary
+make test            # Run all tests
+make test-coverage   # Run tests with coverage report
+make docker-up       # Start Docker containers
+make docker-down     # Stop Docker containers
+make migrate-up      # Apply database migrations
+make migrate-down    # Rollback last migration
+make migrate-create name=<name>  # Create new migration
+make sqlc-generate   # Generate sqlc code
+make generate-mocks  # Generate mocks for testing
+make clean           # Clean build artifacts
+```
+
+## 📝 How to Add New Features
+
+### Example: Adding a "Category" Feature
+
+#### Step 1: Create Domain Layer
+
+**`internal/domain/category/entity.go`**
+```go
+package category
+
+type Category struct {
+    id   string
+    name string
+}
+
+func NewCategory(id, name string) (*Category, error) {
+    // Add validation
+    return &Category{id: id, name: name}, nil
+}
+```
+
+**`internal/domain/category/repository.go`**
+```go
+package category
+
+type CategoryRepository interface {
+    Create(ctx context.Context, category *Category) error
+    GetByID(ctx context.Context, id string) (*Category, error)
+}
+```
+
+#### Step 2: Create Application Layer
+
+**`internal/application/category/create.go`**
+```go
+package category
+
+type CreateCategoryUseCase struct {
+    categoryRepo domain.CategoryRepository
+}
+
+func (uc *CreateCategoryUseCase) Execute(ctx context.Context, input CreateCategoryInput) (*CreateCategoryOutput, error) {
+    // Business logic here
+}
+```
+
+#### Step 3: Create Infrastructure Layer
+
+**Database Migration:**
+```bash
+make migrate-create name=create_categories_table
+```
+
+**SQL Queries in `query/category.sql`:**
+```sql
+-- name: CreateCategory :exec
+INSERT INTO categories (id, name) VALUES ($1, $2);
+```
+
+**Repository Implementation:**
+```go
+// internal/infrastructure/persistence/category_repository.go
+type CategoryRepositoryImpl struct {
+    queries *sqlcgen.Queries
+}
+```
+
+#### Step 4: Add HTTP Handlers
+
+**`internal/infrastructure/delivery/category_handler.go`**
+```go
+type CategoryHandler struct {
+    createUseCase *category.CreateCategoryUseCase
+}
+
+func (h *CategoryHandler) Create(c *gin.Context) {
+    // Handle HTTP request
+}
+```
+
+#### Step 5: Wire in `main.go`
+
+```go
+// Initialize repository
+categoryRepo := persistence.NewCategoryRepository(db)
+
+// Initialize use case
+createCategoryUseCase := category.NewCreateCategoryUseCase(categoryRepo)
+
+// Initialize handler
+categoryHandler := delivery.NewCategoryHandler(createCategoryUseCase)
+
+// Register routes
+categories := v1.Group("/categories")
+{
+    categories.POST("", categoryHandler.Create)
+}
+```
+
+## 🧪 Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage
+make test-coverage
+```
+
+### Writing Tests
+
+Tests for use cases use mocks generated by `mockery`:
+
+```go
+func TestCreateProductUseCase_Execute_Success(t *testing.T) {
+    mockRepo := mocks.NewProductRepository(t)
+    useCase := product.NewCreateProductUseCase(mockRepo)
+    
+    mockRepo.On("Create", mock.Anything, mock.AnythingOfType("*product.Product")).
+        Return(nil).
+        Once()
+    
+    output, err := useCase.Execute(context.Background(), input)
+    
+    assert.NoError(t, err)
+    assert.NotNil(t, output)
+}
+```
+
+## 🔧 Configuration
+
+Configuration is managed via environment variables using Viper. See `.env.example` for available options:
+
+```env
+# Server
+SERVER_HOST=0.0.0.0
+SERVER_PORT=8080
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=cleanarch
+DB_SSLMODE=disable
+
+# Application
+APP_ENV=development
+LOG_LEVEL=debug
+```
+
+Copy `.env.example` to `.env` and adjust values as needed.
+
+## 📚 Tech Stack
+
+- **Web Framework**: [Gin](https://github.com/gin-gonic/gin) - High-performance HTTP framework
+- **Database**: PostgreSQL
+- **Query Builder**: [sqlc](https://sqlc.dev/) - Type-safe SQL code generation
+- **Migrations**: [golang-migrate](https://github.com/golang-migrate/migrate)
+- **Configuration**: [Viper](https://github.com/spf13/viper)
+- **Validation**: [go-playground/validator](https://github.com/go-playground/validator)
+- **Mocking**: [mockery](https://github.com/vektra/mockery)
+- **Testing**: [testify](https://github.com/stretchr/testify)
+
+## 🎯 Design Decisions
+
+### Why sqlc?
+- **Type Safety**: Generates type-safe Go code from SQL
+- **Performance**: Uses pure SQL without ORM overhead
+- **Control**: Full control over queries while maintaining safety
+
+### Why Clean Architecture + DDD?
+- **Maintainability**: Clear separation makes code easier to understand and modify
+- **Testability**: Business logic can be tested without infrastructure
+- **Flexibility**: Easy to swap implementations (e.g., change database)
+- **Scalability**: Structure supports growing complexity
+
+### Why Value Objects?
+- **Validation**: Encapsulate validation logic (e.g., Price cannot be negative)
+- **Immutability**: Prevent accidental modifications
+- **Domain Modeling**: Better represent business concepts
+
+## 🚧 Out of Scope (Future Enhancements)
+
+The following features are not included in v1.0 but may be added later:
+
+- Authentication & Authorization (JWT, OAuth2)
+- Message Broker integration (RabbitMQ, Kafka)
+- Docker deployment configuration
+- API documentation (Swagger/OpenAPI)
+- Caching (Redis)
+- gRPC support
+
+## 📖 Additional Resources
+
+- [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) by Robert C. Martin
+- [Domain-Driven Design](https://martinfowler.com/tags/domain%20driven%20design.html) resources
+- [sqlc Documentation](https://docs.sqlc.dev/)
+- [Gin Documentation](https://gin-gonic.com/docs/)
+
+## 📄 License
+
+This template is provided as-is for educational and commercial use.
+
+## 🤝 Contributing
+
+Feel free to submit issues and enhancement requests!
+
+---
+
+**Happy Coding! 🚀**
+

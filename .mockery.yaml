@@ -1,0 +1,7 @@
+with-expecter: true
+dir: "mocks"
+packages:
+  github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/product:
+    interfaces:
+      ProductRepository:
+
