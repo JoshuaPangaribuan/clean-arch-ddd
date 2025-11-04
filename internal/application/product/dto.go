@@ -26,6 +26,10 @@ type GetProductOutput struct {
 	PriceCurrency string    `json:"price_currency"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+	// Inventory fields (optional, populated when inventory service is available)
+	HasInventory      bool `json:"has_inventory,omitempty"`
+	StockQuantity     int  `json:"stock_quantity,omitempty"`
+	AvailableQuantity int  `json:"available_quantity,omitempty"`
 }
 
 // UpdateProductInput represents the input data for updating a product

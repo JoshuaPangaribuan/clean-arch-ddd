@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE TABLE IF NOT EXISTS products (
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -9,4 +10,9 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE INDEX idx_products_created_at ON products(created_at);
 CREATE INDEX idx_products_name ON products(name);
+
+-- +goose Down
+DROP INDEX IF EXISTS idx_products_name;
+DROP INDEX IF EXISTS idx_products_created_at;
+DROP TABLE IF EXISTS products;
 

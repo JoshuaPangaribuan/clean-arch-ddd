@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/inventory"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/infrastructure/config"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/infrastructure/delivery"
@@ -33,13 +34,28 @@ func main() {
 
 	// Initialize repositories
 	productRepo := persistence.NewProductRepository(db)
+	inventoryRepo := persistence.NewInventoryRepository(db)
 
-	// Initialize use cases
+	// STEP 1: Initialize product use cases (without inventory integration first)
 	createProductUseCase := product.NewCreateProductUseCase(productRepo)
-	getProductUseCase := product.NewGetProductUseCase(productRepo)
+	getProductUseCaseBasic := product.NewGetProductUseCase(productRepo)
+
+	// STEP 2: Initialize inventory use cases with product use case injection
+	// This demonstrates Inventory → Product module communication
+	createInventoryUseCase := inventory.NewCreateInventoryUseCase(inventoryRepo, getProductUseCaseBasic)
+	getInventoryUseCase := inventory.NewGetInventoryUseCase(inventoryRepo, getProductUseCaseBasic)
+	adjustInventoryUseCase := inventory.NewAdjustInventoryUseCase(inventoryRepo, getProductUseCaseBasic)
+
+	// STEP 3: Create adapter for Product → Inventory communication
+	inventoryAdapter := inventory.NewProductInventoryAdapter(getInventoryUseCase)
+
+	// STEP 4: Re-initialize product get use case WITH inventory integration
+	// This demonstrates Product → Inventory bidirectional module communication
+	getProductUseCase := product.NewGetProductUseCaseWithInventory(productRepo, inventoryAdapter)
 
 	// Initialize handlers
 	productHandler := delivery.NewProductHandler(createProductUseCase, getProductUseCase)
+	inventoryHandler := delivery.NewInventoryHandler(createInventoryUseCase, getInventoryUseCase, adjustInventoryUseCase)
 
 	// Set Gin mode based on environment
 	if cfg.App.Env == "production" {
@@ -56,7 +72,7 @@ func main() {
 	router.Use(delivery.CORSMiddleware())
 
 	// Register routes
-	registerRoutes(router, productHandler)
+	registerRoutes(router, productHandler, inventoryHandler)
 
 	// Start server in a goroutine
 	serverAddr := cfg.GetServerAddress()
@@ -96,7 +112,7 @@ func initDatabase(cfg *config.Config) (*sql.DB, error) {
 }
 
 // registerRoutes registers all API routes
-func registerRoutes(router *gin.Engine, productHandler *delivery.ProductHandler) {
+func registerRoutes(router *gin.Engine, productHandler *delivery.ProductHandler, inventoryHandler *delivery.InventoryHandler) {
 	// Health check endpoint
 	router.GET("/health", delivery.HealthCheck)
 
@@ -108,6 +124,14 @@ func registerRoutes(router *gin.Engine, productHandler *delivery.ProductHandler)
 		{
 			products.POST("", productHandler.Create)
 			products.GET("/:id", productHandler.Get)
+		}
+
+		// Inventory routes
+		inventoryGroup := v1.Group("/inventory")
+		{
+			inventoryGroup.POST("", inventoryHandler.Create)
+			inventoryGroup.GET("/:productId", inventoryHandler.Get)
+			inventoryGroup.PATCH("/adjust", inventoryHandler.Adjust)
 		}
 	}
 }

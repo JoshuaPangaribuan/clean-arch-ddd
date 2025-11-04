@@ -151,12 +151,13 @@ curl http://localhost:8080/api/v1/products/{product-id}
 │       └── model/
 │           └── response.go          # API response models
 │
-├── migrations/                      # Database migrations
-│   ├── 000001_create_products_table.up.sql
-│   └── 000001_create_products_table.down.sql
-│
-├── query/                           # SQL queries for sqlc
-│   └── product.sql
+├── db/                                # Database-related files
+│   ├── migrations/                    # Database migrations (Goose)
+│   │   ├── 00001_create_products_table.sql
+│   │   └── 00002_create_inventory_table.sql
+│   └── query/                         # SQL queries for sqlc
+│       ├── product.sql
+│       └── inventory.sql
 │
 ├── mocks/                           # Generated mocks (mockery)
 │   └── ProductRepository.go
@@ -240,7 +241,7 @@ func (uc *CreateCategoryUseCase) Execute(ctx context.Context, input CreateCatego
 make migrate-create name=create_categories_table
 ```
 
-**SQL Queries in `query/category.sql`:**
+**SQL Queries in `db/query/category.sql`:**
 ```sql
 -- name: CreateCategory :exec
 INSERT INTO categories (id, name) VALUES ($1, $2);
@@ -396,25 +397,6 @@ func TestCreateProductUseCase_Execute_Success(t *testing.T) {
 }
 ```
 
-### Test Utilities
-
-The project includes test utilities in `internal/testutil/`:
-
-- **InMemoryProductRepository**: In-memory repository implementation for fast unit tests without database dependencies
-- Can be used as a drop-in replacement for repository mocks in certain scenarios
-
-Example usage:
-
-```go
-import "github.com/JoshuaPangaribuan/clean-arch-ddd/internal/testutil"
-
-func TestUseCase(t *testing.T) {
-    repo := testutil.NewInMemoryProductRepository()
-    useCase := product.NewCreateProductUseCase(repo)
-    // test implementation...
-}
-```
-
 ### Generating Mocks
 
 Mocks are automatically generated before tests run. To manually generate:
@@ -475,7 +457,7 @@ Copy `.env.example` to `.env` and adjust values as needed.
 - **Web Framework**: [Gin](https://github.com/gin-gonic/gin) - High-performance HTTP framework
 - **Database**: PostgreSQL
 - **Query Builder**: [sqlc](https://sqlc.dev/) - Type-safe SQL code generation
-- **Migrations**: [golang-migrate](https://github.com/golang-migrate/migrate)
+- **Migrations**: [goose](https://github.com/pressly/goose)
 - **Configuration**: [Viper](https://github.com/spf13/viper)
 - **Validation**: [go-playground/validator](https://github.com/go-playground/validator)
 - **Mocking**: [mockery](https://github.com/vektra/mockery)

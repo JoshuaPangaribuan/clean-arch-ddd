@@ -28,7 +28,7 @@ deps:
 	go mod download
 	go mod tidy
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+	go install github.com/pressly/goose/v3/cmd/goose@latest
 	go install github.com/vektra/mockery/v2@latest
 
 # Run the application
@@ -89,11 +89,11 @@ docker-down:
 
 # Run database migrations
 migrate-up:
-	migrate -path migrations -database "postgresql://postgres:postgres@localhost:5432/cleanarch?sslmode=disable" up
+	goose -dir db/migrations postgres "postgresql://postgres:postgres@localhost:5432/cleanarch?sslmode=disable" up
 
 # Rollback database migrations
 migrate-down:
-	migrate -path migrations -database "postgresql://postgres:postgres@localhost:5432/cleanarch?sslmode=disable" down 1
+	goose -dir db/migrations postgres "postgresql://postgres:postgres@localhost:5432/cleanarch?sslmode=disable" down
 
 # Create a new migration
 migrate-create:
@@ -101,7 +101,7 @@ migrate-create:
 		echo "Error: name parameter is required. Usage: make migrate-create name=migration_name"; \
 		exit 1; \
 	fi
-	migrate create -ext sql -dir migrations -seq $(name)
+	goose -dir db/migrations create $(name) sql
 
 # Generate sqlc code
 sqlc-generate:
