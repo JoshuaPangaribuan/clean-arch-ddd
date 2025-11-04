@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+// Domain errors
+var (
+	ErrProductNotFound      = errors.New("product not found")
+	ErrProductAlreadyExists = errors.New("product already exists")
+)
+
 // Product represents a product entity in the domain
 type Product struct {
 	id        string
