@@ -12,12 +12,28 @@ import (
 )
 
 // ProductRepositoryImpl implements the product.ProductRepository interface
+// It also satisfies both ProductCommandRepository and ProductQueryRepository
 type ProductRepositoryImpl struct {
 	queries *sqlcgen.Queries
 }
 
 // NewProductRepository creates a new instance of ProductRepositoryImpl
+// Deprecated: Use NewProductCommandRepository and NewProductQueryRepository instead
 func NewProductRepository(db *sql.DB) product.ProductRepository {
+	return &ProductRepositoryImpl{
+		queries: sqlcgen.New(db),
+	}
+}
+
+// NewProductCommandRepository creates a new instance for command operations
+func NewProductCommandRepository(db *sql.DB) product.ProductCommandRepository {
+	return &ProductRepositoryImpl{
+		queries: sqlcgen.New(db),
+	}
+}
+
+// NewProductQueryRepository creates a new instance for query operations
+func NewProductQueryRepository(db *sql.DB) product.ProductQueryRepository {
 	return &ProductRepositoryImpl{
 		queries: sqlcgen.New(db),
 	}

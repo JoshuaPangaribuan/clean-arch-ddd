@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/inventory"
-	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product"
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/inventory/command"
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/inventory/query"
+	productcommand "github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product/command"
+	productquery "github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product/query"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/infrastructure/config"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/infrastructure/delivery"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/infrastructure/persistence"
@@ -32,30 +35,59 @@ func main() {
 
 	log.Println("Database connection established")
 
-	// Initialize repositories
-	productRepo := persistence.NewProductRepository(db)
-	inventoryRepo := persistence.NewInventoryRepository(db)
+	// Initialize repositories (CQRS: separate command and query repositories)
+	productCmdRepo := persistence.NewProductCommandRepository(db)
+	productQueryRepo := persistence.NewProductQueryRepository(db)
+	inventoryCmdRepo := persistence.NewInventoryCommandRepository(db)
+	inventoryQueryRepo := persistence.NewInventoryQueryRepository(db)
 
-	// STEP 1: Initialize product use cases (without inventory integration first)
-	createProductUseCase := product.NewCreateProductUseCase(productRepo)
-	getProductUseCaseBasic := product.NewGetProductUseCase(productRepo)
+	// STEP 1: Initialize product queries (without inventory integration first)
+	getProductQueryBasic := productquery.NewGetProductQuery(productQueryRepo)
 
-	// STEP 2: Initialize inventory use cases with product use case injection
+	// STEP 2: Create adapter for Inventory → Product communication
+	productQueryAdapter := query.NewProductQueryAdapter(getProductQueryBasic)
+
+	// STEP 3: Initialize inventory commands and queries with product query adapter injection
 	// This demonstrates Inventory → Product module communication
-	createInventoryUseCase := inventory.NewCreateInventoryUseCase(inventoryRepo, getProductUseCaseBasic)
-	getInventoryUseCase := inventory.NewGetInventoryUseCase(inventoryRepo, getProductUseCaseBasic)
-	adjustInventoryUseCase := inventory.NewAdjustInventoryUseCase(inventoryRepo, getProductUseCaseBasic)
+	createInventoryCommand := command.NewCreateInventoryCommand(
+		inventoryCmdRepo,
+		inventoryQueryRepo,
+		productQueryAdapter,
+	)
+	getInventoryQuery := query.NewGetInventoryQuery(
+		inventoryQueryRepo,
+		productQueryAdapter,
+	)
+	adjustInventoryCommand := command.NewAdjustInventoryCommand(
+		inventoryCmdRepo,
+		inventoryQueryRepo,
+		productQueryAdapter,
+	)
 
-	// STEP 3: Create adapter for Product → Inventory communication
-	inventoryAdapter := inventory.NewProductInventoryAdapter(getInventoryUseCase)
+	// STEP 4: Create adapter for Product → Inventory communication
+	// Wrap GetInventoryQuery.Execute to match the function signature expected by ProductInventoryAdapter
+	inventoryAdapterFunc := func(ctx context.Context, productID string) (*productquery.InventoryOutput, error) {
+		output, err := getInventoryQuery.Execute(ctx, productID)
+		if err != nil {
+			return nil, err
+		}
+		return &productquery.InventoryOutput{
+			Quantity:          output.Quantity,
+			AvailableQuantity: output.AvailableQuantity,
+		}, nil
+	}
+	inventoryAdapter := productquery.NewProductInventoryAdapter(inventoryAdapterFunc)
 
-	// STEP 4: Re-initialize product get use case WITH inventory integration
+	// STEP 5: Re-initialize product query WITH inventory integration
 	// This demonstrates Product → Inventory bidirectional module communication
-	getProductUseCase := product.NewGetProductUseCaseWithInventory(productRepo, inventoryAdapter)
+	getProductQuery := productquery.NewGetProductQueryWithInventory(productQueryRepo, inventoryAdapter)
+
+	// Initialize product command
+	createProductCommand := productcommand.NewCreateProductCommand(productCmdRepo)
 
 	// Initialize handlers
-	productHandler := delivery.NewProductHandler(createProductUseCase, getProductUseCase)
-	inventoryHandler := delivery.NewInventoryHandler(createInventoryUseCase, getInventoryUseCase, adjustInventoryUseCase)
+	productHandler := delivery.NewProductHandler(createProductCommand, getProductQuery)
+	inventoryHandler := delivery.NewInventoryHandler(createInventoryCommand, getInventoryQuery, adjustInventoryCommand)
 
 	// Set Gin mode based on environment
 	if cfg.App.Env == "production" {
@@ -107,6 +139,7 @@ func initDatabase(cfg *config.Config) (*sql.DB, error) {
 	// Configure connection pool
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
+	// db.SetConnMaxLifetime(5 * time.Minute) // Uncomment if needed
 
 	return db, nil
 }

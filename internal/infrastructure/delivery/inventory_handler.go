@@ -3,7 +3,8 @@ package delivery
 import (
 	"net/http"
 
-	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/inventory"
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/inventory/command"
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/inventory/query"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/shared/model"
 	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 	"github.com/gin-gonic/gin"
@@ -12,29 +13,29 @@ import (
 
 // InventoryHandler handles HTTP requests for inventory operations
 type InventoryHandler struct {
-	createUseCase *inventory.CreateInventoryUseCase
-	getUseCase    *inventory.GetInventoryUseCase
-	adjustUseCase *inventory.AdjustInventoryUseCase
+	createCommand *command.CreateInventoryCommand
+	getQuery      *query.GetInventoryQuery
+	adjustCommand *command.AdjustInventoryCommand
 	validator     *validator.Validate
 }
 
 // NewInventoryHandler creates a new InventoryHandler
 func NewInventoryHandler(
-	createUseCase *inventory.CreateInventoryUseCase,
-	getUseCase *inventory.GetInventoryUseCase,
-	adjustUseCase *inventory.AdjustInventoryUseCase,
+	createCommand *command.CreateInventoryCommand,
+	getQuery *query.GetInventoryQuery,
+	adjustCommand *command.AdjustInventoryCommand,
 ) *InventoryHandler {
 	return &InventoryHandler{
-		createUseCase: createUseCase,
-		getUseCase:    getUseCase,
-		adjustUseCase: adjustUseCase,
+		createCommand: createCommand,
+		getQuery:      getQuery,
+		adjustCommand: adjustCommand,
 		validator:     validator.New(),
 	}
 }
 
 // Create handles POST /inventory - creates a new inventory record
 func (h *InventoryHandler) Create(c *gin.Context) {
-	var input inventory.CreateInventoryInput
+	var input command.CreateInventoryInput
 
 	// Bind JSON request body
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -49,8 +50,8 @@ func (h *InventoryHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Execute use case
-	output, err := h.createUseCase.Execute(c.Request.Context(), input)
+	// Execute command
+	output, err := h.createCommand.Execute(c.Request.Context(), input)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -73,8 +74,8 @@ func (h *InventoryHandler) Get(c *gin.Context) {
 		return
 	}
 
-	// Execute use case
-	output, err := h.getUseCase.Execute(c.Request.Context(), productID)
+	// Execute query
+	output, err := h.getQuery.Execute(c.Request.Context(), productID)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -89,7 +90,7 @@ func (h *InventoryHandler) Get(c *gin.Context) {
 
 // Adjust handles PATCH /inventory/adjust - adjusts inventory quantity
 func (h *InventoryHandler) Adjust(c *gin.Context) {
-	var input inventory.AdjustInventoryInput
+	var input command.AdjustInventoryInput
 
 	// Bind JSON request body
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -104,8 +105,8 @@ func (h *InventoryHandler) Adjust(c *gin.Context) {
 		return
 	}
 
-	// Execute use case
-	output, err := h.adjustUseCase.Execute(c.Request.Context(), input)
+	// Execute command
+	output, err := h.adjustCommand.Execute(c.Request.Context(), input)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -117,4 +118,3 @@ func (h *InventoryHandler) Adjust(c *gin.Context) {
 		output,
 	))
 }
-

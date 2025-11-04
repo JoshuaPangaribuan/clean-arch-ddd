@@ -3,7 +3,8 @@ package delivery
 import (
 	"net/http"
 
-	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product"
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product/command"
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product/query"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/shared/model"
 	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 	"github.com/gin-gonic/gin"
@@ -12,26 +13,26 @@ import (
 
 // ProductHandler handles HTTP requests for product operations
 type ProductHandler struct {
-	createUseCase *product.CreateProductUseCase
-	getUseCase    *product.GetProductUseCase
+	createCommand *command.CreateProductCommand
+	getQuery      *query.GetProductQuery
 	validator     *validator.Validate
 }
 
 // NewProductHandler creates a new ProductHandler
 func NewProductHandler(
-	createUseCase *product.CreateProductUseCase,
-	getUseCase *product.GetProductUseCase,
+	createCommand *command.CreateProductCommand,
+	getQuery *query.GetProductQuery,
 ) *ProductHandler {
 	return &ProductHandler{
-		createUseCase: createUseCase,
-		getUseCase:    getUseCase,
+		createCommand: createCommand,
+		getQuery:      getQuery,
 		validator:     validator.New(),
 	}
 }
 
 // Create handles POST /products - creates a new product
 func (h *ProductHandler) Create(c *gin.Context) {
-	var input product.CreateProductInput
+	var input command.CreateProductInput
 
 	// Bind JSON request body
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -46,8 +47,8 @@ func (h *ProductHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Execute use case
-	output, err := h.createUseCase.Execute(c.Request.Context(), input)
+	// Execute command
+	output, err := h.createCommand.Execute(c.Request.Context(), input)
 	if err != nil {
 		HandleError(c, err)
 		return
@@ -70,8 +71,8 @@ func (h *ProductHandler) Get(c *gin.Context) {
 		return
 	}
 
-	// Execute use case
-	output, err := h.getUseCase.Execute(c.Request.Context(), productID)
+	// Execute query
+	output, err := h.getQuery.Execute(c.Request.Context(), productID)
 	if err != nil {
 		HandleError(c, err)
 		return

@@ -12,12 +12,28 @@ import (
 )
 
 // InventoryRepositoryImpl implements the inventory.InventoryRepository interface
+// It also satisfies both InventoryCommandRepository and InventoryQueryRepository
 type InventoryRepositoryImpl struct {
 	queries *sqlcgen.Queries
 }
 
 // NewInventoryRepository creates a new instance of InventoryRepositoryImpl
+// Deprecated: Use NewInventoryCommandRepository and NewInventoryQueryRepository instead
 func NewInventoryRepository(db *sql.DB) inventory.InventoryRepository {
+	return &InventoryRepositoryImpl{
+		queries: sqlcgen.New(db),
+	}
+}
+
+// NewInventoryCommandRepository creates a new instance for command operations
+func NewInventoryCommandRepository(db *sql.DB) inventory.InventoryCommandRepository {
+	return &InventoryRepositoryImpl{
+		queries: sqlcgen.New(db),
+	}
+}
+
+// NewInventoryQueryRepository creates a new instance for query operations
+func NewInventoryQueryRepository(db *sql.DB) inventory.InventoryQueryRepository {
 	return &InventoryRepositoryImpl{
 		queries: sqlcgen.New(db),
 	}
