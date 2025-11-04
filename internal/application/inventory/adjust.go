@@ -2,10 +2,10 @@ package inventory
 
 import (
 	"context"
-	"errors"
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/inventory"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 )
 
 // AdjustInventoryUseCase handles the business logic for adjusting inventory quantities
@@ -30,17 +30,17 @@ func NewAdjustInventoryUseCase(
 func (uc *AdjustInventoryUseCase) Execute(ctx context.Context, input AdjustInventoryInput) (*AdjustInventoryOutput, error) {
 	// Validate input
 	if input.ProductID == "" {
-		return nil, errors.New("product ID is required")
+		return nil, apperrors.New(apperrors.CodeInvalidInput, "product ID is required")
 	}
 	if input.Adjustment == 0 {
-		return nil, errors.New("adjustment cannot be zero")
+		return nil, apperrors.New(apperrors.CodeInvalidAdjustment, "adjustment cannot be zero")
 	}
 
 	// MODULE COMMUNICATION: Verify product exists
 	productOutput, err := uc.productUseCase.Execute(ctx, input.ProductID)
 	if err != nil {
-		if err.Error() == "product not found" {
-			return nil, errors.New("cannot adjust inventory: product not found")
+		if apperrors.Is(err, apperrors.CodeProductNotFound) {
+			return nil, apperrors.New(apperrors.CodeProductNotFound, "cannot adjust inventory: product not found")
 		}
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (uc *AdjustInventoryUseCase) Execute(ctx context.Context, input AdjustInven
 	// Retrieve current inventory
 	inv, err := uc.inventoryRepo.GetByProductID(ctx, input.ProductID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	if inv == nil {
@@ -62,7 +62,7 @@ func (uc *AdjustInventoryUseCase) Execute(ctx context.Context, input AdjustInven
 
 	// Save updated inventory
 	if err := uc.inventoryRepo.Update(ctx, inv); err != nil {
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	// Return output DTO
@@ -77,4 +77,3 @@ func (uc *AdjustInventoryUseCase) Execute(ctx context.Context, input AdjustInven
 		UpdatedAt:         inv.UpdatedAt(),
 	}, nil
 }
-

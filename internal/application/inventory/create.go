@@ -2,10 +2,10 @@ package inventory
 
 import (
 	"context"
-	"errors"
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/inventory"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 	"github.com/google/uuid"
 )
 
@@ -31,7 +31,7 @@ func NewCreateInventoryUseCase(
 func (uc *CreateInventoryUseCase) Execute(ctx context.Context, input CreateInventoryInput) (*CreateInventoryOutput, error) {
 	// Validate input
 	if input.ProductID == "" {
-		return nil, errors.New("product ID is required")
+		return nil, apperrors.New(apperrors.CodeInvalidInput, "product ID is required")
 	}
 	if input.Quantity < 0 {
 		return nil, inventory.ErrInvalidQuantity
@@ -40,8 +40,8 @@ func (uc *CreateInventoryUseCase) Execute(ctx context.Context, input CreateInven
 	// MODULE COMMUNICATION: Call Product module to verify product exists
 	productOutput, err := uc.productUseCase.Execute(ctx, input.ProductID)
 	if err != nil {
-		if err.Error() == "product not found" {
-			return nil, errors.New("cannot create inventory: product not found")
+		if apperrors.Is(err, apperrors.CodeProductNotFound) {
+			return nil, apperrors.New(apperrors.CodeProductNotFound, "cannot create inventory: product not found")
 		}
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (uc *CreateInventoryUseCase) Execute(ctx context.Context, input CreateInven
 	// Check if inventory already exists for this product
 	existingInventory, err := uc.inventoryRepo.GetByProductID(ctx, input.ProductID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 	if existingInventory != nil {
 		return nil, inventory.ErrInventoryExists
@@ -68,7 +68,7 @@ func (uc *CreateInventoryUseCase) Execute(ctx context.Context, input CreateInven
 
 	// Save to repository
 	if err := uc.inventoryRepo.Create(ctx, inv); err != nil {
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	// Return output DTO with product information

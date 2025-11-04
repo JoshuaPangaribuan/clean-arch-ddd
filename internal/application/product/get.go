@@ -2,9 +2,9 @@ package product
 
 import (
 	"context"
-	"errors"
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/product"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 )
 
 // GetProductUseCase handles the business logic for retrieving a product
@@ -49,18 +49,18 @@ func NewGetProductUseCaseWithInventory(
 func (uc *GetProductUseCase) Execute(ctx context.Context, productID string) (*GetProductOutput, error) {
 	// Validate input
 	if productID == "" {
-		return nil, errors.New("product ID is required")
+		return nil, apperrors.New(apperrors.CodeInvalidProductID, "product ID is required")
 	}
 
 	// Retrieve product from repository
 	prod, err := uc.productRepo.GetByID(ctx, productID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	// Check if product exists
 	if prod == nil {
-		return nil, errors.New("product not found")
+		return nil, product.ErrProductNotFound
 	}
 
 	// Build base output DTO

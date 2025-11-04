@@ -2,10 +2,10 @@ package inventory
 
 import (
 	"context"
-	"errors"
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/inventory"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 )
 
 // GetInventoryUseCase handles the business logic for retrieving inventory
@@ -30,13 +30,13 @@ func NewGetInventoryUseCase(
 func (uc *GetInventoryUseCase) Execute(ctx context.Context, productID string) (*GetInventoryOutput, error) {
 	// Validate input
 	if productID == "" {
-		return nil, errors.New("product ID is required")
+		return nil, apperrors.New(apperrors.CodeInvalidInput, "product ID is required")
 	}
 
 	// Retrieve inventory from repository
 	inv, err := uc.inventoryRepo.GetByProductID(ctx, productID)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	// Check if inventory exists
@@ -48,7 +48,7 @@ func (uc *GetInventoryUseCase) Execute(ctx context.Context, productID string) (*
 	productOutput, err := uc.productUseCase.Execute(ctx, productID)
 	if err != nil {
 		// If product is deleted but inventory still exists, return partial data
-		if err.Error() == "product not found" {
+		if apperrors.Is(err, apperrors.CodeProductNotFound) {
 			return &GetInventoryOutput{
 				ID:                inv.ID(),
 				ProductID:         inv.ProductID(),

@@ -8,6 +8,7 @@ import (
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/inventory"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/infrastructure/persistence/sqlcgen"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 )
 
 // InventoryRepositoryImpl implements the inventory.InventoryRepository interface
@@ -34,7 +35,11 @@ func (r *InventoryRepositoryImpl) Create(ctx context.Context, inv *inventory.Inv
 		UpdatedAt:        inv.UpdatedAt(),
 	}
 
-	return r.queries.CreateInventory(ctx, params)
+	err := r.queries.CreateInventory(ctx, params)
+	if err != nil {
+		return apperrors.WrapDatabaseError(err)
+	}
+	return nil
 }
 
 // GetByProductID retrieves inventory by product ID from the database
@@ -44,7 +49,7 @@ func (r *InventoryRepositoryImpl) GetByProductID(ctx context.Context, productID 
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // Inventory not found
 		}
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	return r.toDomainInventory(dbInventory), nil
@@ -60,12 +65,20 @@ func (r *InventoryRepositoryImpl) Update(ctx context.Context, inv *inventory.Inv
 		UpdatedAt:        inv.UpdatedAt(),
 	}
 
-	return r.queries.UpdateInventory(ctx, params)
+	err := r.queries.UpdateInventory(ctx, params)
+	if err != nil {
+		return apperrors.WrapDatabaseError(err)
+	}
+	return nil
 }
 
 // Delete removes an inventory record from the database
 func (r *InventoryRepositoryImpl) Delete(ctx context.Context, productID string) error {
-	return r.queries.DeleteInventory(ctx, productID)
+	err := r.queries.DeleteInventory(ctx, productID)
+	if err != nil {
+		return apperrors.WrapDatabaseError(err)
+	}
+	return nil
 }
 
 // AdjustStock adjusts the stock quantity for a product
@@ -76,7 +89,11 @@ func (r *InventoryRepositoryImpl) AdjustStock(ctx context.Context, productID str
 		UpdatedAt: time.Now(),
 	}
 
-	return r.queries.AdjustInventoryQuantity(ctx, params)
+	err := r.queries.AdjustInventoryQuantity(ctx, params)
+	if err != nil {
+		return apperrors.WrapDatabaseError(err)
+	}
+	return nil
 }
 
 // toDomainInventory converts a database inventory model to a domain inventory entity

@@ -369,3 +369,97 @@ This implementation demonstrates a **production-ready pattern** for module-to-mo
 
 The pattern is ready for production use and can serve as a template for adding more modules to the system.
 
+---
+
+## Smart Error Handling System
+
+### Overview
+
+Implemented a centralized error handling system in `pkg/errors` that provides structured error codes, HTTP status mapping, stack trace capture, and easy extensibility.
+
+### Components
+
+#### 1. Error Code Registry (`pkg/errors/codes.go`)
+- Centralized registry for error codes with HTTP status mapping
+- Predefined codes for common scenarios (NotFound, InvalidInput, Conflict, etc.)
+- Domain-specific codes for Product and Inventory modules
+- Easy registration of new error codes via `RegisterErrorCode()`
+
+#### 2. AppError Type (`pkg/errors/error.go`)
+- Structured error type with code, message, HTTP status, and stack trace
+- Helper functions: `New()`, `Wrap()`, `Wrapf()`, `WithCode()`
+- Utility functions: `Is()`, `GetCode()`, `GetHTTPStatus()`, `GetMessage()`
+- Supports error wrapping for context preservation
+
+#### 3. Database Error Helpers (`pkg/errors/helpers.go`)
+- `WrapDatabaseError()`: Automatically maps database errors to appropriate codes
+  - `sql.ErrNoRows` → `CodeNotFound`
+  - Duplicate key violations → `CodeConflict`
+  - Connection errors → `CodeDatabaseConnection`
+  - Other errors → `CodeDatabaseError`
+- `WrapValidationError()`: Wraps validation errors with `CodeValidation`
+
+#### 4. HTTP Integration (`internal/infrastructure/delivery/error_handler.go`)
+- `HandleError()`: Converts errors to HTTP responses with correct status codes
+- `HandleValidationError()`: Special handling for validation errors
+- Automatic error code extraction and HTTP status mapping
+
+### Usage Across Layers
+
+**Domain Layer:**
+```go
+// Domain errors use error codes
+var ErrProductNotFound = errors.New(errors.CodeProductNotFound, "product not found")
+```
+
+**Application Layer:**
+```go
+// Use cases wrap errors appropriately
+if err != nil {
+    return nil, apperrors.WrapDatabaseError(err)
+}
+```
+
+**Infrastructure Layer:**
+```go
+// Repositories wrap database errors
+err := r.queries.CreateProduct(ctx, params)
+if err != nil {
+    return apperrors.WrapDatabaseError(err)
+}
+```
+
+**Delivery Layer:**
+```go
+// Handlers use centralized error handling
+output, err := h.createUseCase.Execute(ctx, input)
+if err != nil {
+    HandleError(c, err)  // Automatically maps to correct HTTP status
+    return
+}
+```
+
+### Benefits
+
+1. **Consistency**: All errors follow the same structure and format
+2. **Extensibility**: Easy to add new error types without modifying existing code
+3. **Debugging**: Stack traces captured automatically for better error tracking
+4. **HTTP Mapping**: Automatic conversion of error codes to appropriate HTTP status codes
+5. **Type Safety**: Error codes are typed constants, reducing typos
+6. **Maintainability**: Centralized error handling makes updates easier
+
+### Adding New Error Types
+
+To add a new error type:
+
+1. Define the error code constant
+2. Register it with `RegisterErrorCode(code, httpStatus, description)`
+3. Use it throughout the application with `errors.New(code, message)`
+
+Example:
+```go
+const CodeCustomError = errors.ErrorCode("CUSTOM_ERROR")
+errors.RegisterErrorCode(CodeCustomError, 400, "Custom error description")
+err := errors.New(CodeCustomError, "Something went wrong")
+```
+

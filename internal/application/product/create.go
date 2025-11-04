@@ -2,9 +2,9 @@ package product
 
 import (
 	"context"
-	"errors"
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/product"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 	"github.com/google/uuid"
 )
 
@@ -24,7 +24,7 @@ func NewCreateProductUseCase(productRepo product.ProductRepository) *CreateProdu
 func (uc *CreateProductUseCase) Execute(ctx context.Context, input CreateProductInput) (*CreateProductOutput, error) {
 	// Validate input
 	if input.Name == "" {
-		return nil, errors.New("product name is required")
+		return nil, apperrors.New(apperrors.CodeInvalidProductName, "product name is required")
 	}
 
 	// Create price value object with validation
@@ -44,7 +44,7 @@ func (uc *CreateProductUseCase) Execute(ctx context.Context, input CreateProduct
 
 	// Persist the product
 	if err := uc.productRepo.Create(ctx, prod); err != nil {
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	// Return output DTO

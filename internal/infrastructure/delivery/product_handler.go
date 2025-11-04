@@ -1,11 +1,11 @@
 package delivery
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/product"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/shared/model"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -35,37 +35,21 @@ func (h *ProductHandler) Create(c *gin.Context) {
 
 	// Bind JSON request body
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			"Invalid request body: "+err.Error(),
-			"INVALID_REQUEST",
-		))
+		appErr := apperrors.New(apperrors.CodeInvalidInput, "Invalid request body: "+err.Error())
+		HandleError(c, appErr)
 		return
 	}
 
 	// Validate input
 	if err := h.validator.Struct(input); err != nil {
-		var validationErrors validator.ValidationErrors
-		if errors.As(err, &validationErrors) {
-			c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-				"Validation failed: "+validationErrors.Error(),
-				"VALIDATION_ERROR",
-			))
-			return
-		}
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			err.Error(),
-			"VALIDATION_ERROR",
-		))
+		HandleValidationError(c, err)
 		return
 	}
 
 	// Execute use case
 	output, err := h.createUseCase.Execute(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.NewErrorResponse(
-			err.Error(),
-			"CREATE_FAILED",
-		))
+		HandleError(c, err)
 		return
 	}
 
@@ -81,28 +65,15 @@ func (h *ProductHandler) Get(c *gin.Context) {
 	productID := c.Param("id")
 
 	if productID == "" {
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			"Product ID is required",
-			"INVALID_REQUEST",
-		))
+		appErr := apperrors.New(apperrors.CodeInvalidProductID, "Product ID is required")
+		HandleError(c, appErr)
 		return
 	}
 
 	// Execute use case
 	output, err := h.getUseCase.Execute(c.Request.Context(), productID)
 	if err != nil {
-		if err.Error() == "product not found" {
-			c.JSON(http.StatusNotFound, model.NewErrorResponse(
-				"Product not found",
-				"NOT_FOUND",
-			))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, model.NewErrorResponse(
-			err.Error(),
-			"GET_FAILED",
-		))
+		HandleError(c, err)
 		return
 	}
 

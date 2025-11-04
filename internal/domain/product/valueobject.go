@@ -1,8 +1,9 @@
 package product
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 )
 
 // Price is a value object that represents a monetary amount with currency
@@ -15,17 +16,17 @@ type Price struct {
 func NewPrice(amount float64, currency string) (Price, error) {
 	// Business rule: Price cannot be negative
 	if amount < 0 {
-		return Price{}, errors.New("price amount cannot be negative")
+		return Price{}, errors.New(errors.CodeInvalidPrice, "price amount cannot be negative")
 	}
 
 	// Business rule: Currency must be specified
 	if currency == "" {
-		return Price{}, errors.New("currency cannot be empty")
+		return Price{}, errors.New(errors.CodeInvalidPrice, "currency cannot be empty")
 	}
 
 	// Business rule: Currency must be valid ISO 4217 code (simplified validation)
 	if len(currency) != 3 {
-		return Price{}, errors.New("currency must be a 3-letter ISO code")
+		return Price{}, errors.New(errors.CodeInvalidPrice, "currency must be a 3-letter ISO code")
 	}
 
 	return Price{
@@ -62,7 +63,7 @@ func (p Price) IsZero() bool {
 // Add adds another price to this price (only if same currency)
 func (p Price) Add(other Price) (Price, error) {
 	if p.currency != other.currency {
-		return Price{}, errors.New("cannot add prices with different currencies")
+		return Price{}, errors.New(errors.CodeInvalidPrice, "cannot add prices with different currencies")
 	}
 	return NewPrice(p.amount+other.amount, p.currency)
 }
@@ -70,7 +71,7 @@ func (p Price) Add(other Price) (Price, error) {
 // Subtract subtracts another price from this price (only if same currency)
 func (p Price) Subtract(other Price) (Price, error) {
 	if p.currency != other.currency {
-		return Price{}, errors.New("cannot subtract prices with different currencies")
+		return Price{}, errors.New(errors.CodeInvalidPrice, "cannot subtract prices with different currencies")
 	}
 	return NewPrice(p.amount-other.amount, p.currency)
 }

@@ -1,14 +1,15 @@
 package product
 
 import (
-	"errors"
 	"time"
+
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 )
 
-// Domain errors
+// Domain errors - using pkg/errors for consistency
 var (
-	ErrProductNotFound      = errors.New("product not found")
-	ErrProductAlreadyExists = errors.New("product already exists")
+	ErrProductNotFound      = errors.New(errors.CodeProductNotFound, "product not found")
+	ErrProductAlreadyExists = errors.New(errors.CodeProductAlreadyExists, "product already exists")
 )
 
 // Product represents a product entity in the domain
@@ -23,10 +24,10 @@ type Product struct {
 // NewProduct creates a new Product entity with validation
 func NewProduct(id, name string, price Price) (*Product, error) {
 	if id == "" {
-		return nil, errors.New("product id cannot be empty")
+		return nil, errors.New(errors.CodeInvalidProductID, "product id cannot be empty")
 	}
 	if name == "" {
-		return nil, errors.New("product name cannot be empty")
+		return nil, errors.New(errors.CodeInvalidProductName, "product name cannot be empty")
 	}
 
 	now := time.Now()
@@ -79,7 +80,7 @@ func (p *Product) UpdatedAt() time.Time {
 // UpdateName updates the product's name with validation
 func (p *Product) UpdateName(name string) error {
 	if name == "" {
-		return errors.New("product name cannot be empty")
+		return errors.New(errors.CodeInvalidProductName, "product name cannot be empty")
 	}
 	p.name = name
 	p.updatedAt = time.Now()

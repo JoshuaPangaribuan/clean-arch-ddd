@@ -38,15 +38,12 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 		// Check if there are any errors
 		if len(c.Errors) > 0 {
 			err := c.Errors.Last()
-			log.Printf("Error: %v", err.Err)
+			
+			// Use our smart error handling
+			HandleError(c, err.Err)
 
-			// Return error response if not already handled
-			if !c.Writer.Written() {
-				c.JSON(500, gin.H{
-					"success": false,
-					"error":   "Internal server error",
-				})
-			}
+			// Mark as written to prevent further processing
+			c.Writer.WriteHeaderNow()
 		}
 	}
 }

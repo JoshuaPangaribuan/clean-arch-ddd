@@ -1,11 +1,11 @@
 package delivery
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/application/inventory"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/shared/model"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -38,45 +38,21 @@ func (h *InventoryHandler) Create(c *gin.Context) {
 
 	// Bind JSON request body
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			"Invalid request body: "+err.Error(),
-			"INVALID_REQUEST",
-		))
+		appErr := apperrors.New(apperrors.CodeInvalidInput, "Invalid request body: "+err.Error())
+		HandleError(c, appErr)
 		return
 	}
 
 	// Validate input
 	if err := h.validator.Struct(input); err != nil {
-		var validationErrors validator.ValidationErrors
-		if errors.As(err, &validationErrors) {
-			c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-				"Validation failed: "+validationErrors.Error(),
-				"VALIDATION_ERROR",
-			))
-			return
-		}
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			err.Error(),
-			"VALIDATION_ERROR",
-		))
+		HandleValidationError(c, err)
 		return
 	}
 
 	// Execute use case
 	output, err := h.createUseCase.Execute(c.Request.Context(), input)
 	if err != nil {
-		// Handle specific errors
-		if err.Error() == "cannot create inventory: product not found" {
-			c.JSON(http.StatusNotFound, model.NewErrorResponse(
-				err.Error(),
-				"PRODUCT_NOT_FOUND",
-			))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, model.NewErrorResponse(
-			err.Error(),
-			"CREATE_FAILED",
-		))
+		HandleError(c, err)
 		return
 	}
 
@@ -92,28 +68,15 @@ func (h *InventoryHandler) Get(c *gin.Context) {
 	productID := c.Param("productId")
 
 	if productID == "" {
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			"Product ID is required",
-			"INVALID_REQUEST",
-		))
+		appErr := apperrors.New(apperrors.CodeInvalidInput, "Product ID is required")
+		HandleError(c, appErr)
 		return
 	}
 
 	// Execute use case
 	output, err := h.getUseCase.Execute(c.Request.Context(), productID)
 	if err != nil {
-		if err.Error() == "inventory not found" {
-			c.JSON(http.StatusNotFound, model.NewErrorResponse(
-				"Inventory not found for this product",
-				"NOT_FOUND",
-			))
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, model.NewErrorResponse(
-			err.Error(),
-			"GET_FAILED",
-		))
+		HandleError(c, err)
 		return
 	}
 
@@ -130,52 +93,21 @@ func (h *InventoryHandler) Adjust(c *gin.Context) {
 
 	// Bind JSON request body
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			"Invalid request body: "+err.Error(),
-			"INVALID_REQUEST",
-		))
+		appErr := apperrors.New(apperrors.CodeInvalidInput, "Invalid request body: "+err.Error())
+		HandleError(c, appErr)
 		return
 	}
 
 	// Validate input
 	if err := h.validator.Struct(input); err != nil {
-		var validationErrors validator.ValidationErrors
-		if errors.As(err, &validationErrors) {
-			c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-				"Validation failed: "+validationErrors.Error(),
-				"VALIDATION_ERROR",
-			))
-			return
-		}
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			err.Error(),
-			"VALIDATION_ERROR",
-		))
+		HandleValidationError(c, err)
 		return
 	}
 
 	// Execute use case
 	output, err := h.adjustUseCase.Execute(c.Request.Context(), input)
 	if err != nil {
-		// Handle specific errors
-		if err.Error() == "inventory not found" {
-			c.JSON(http.StatusNotFound, model.NewErrorResponse(
-				"Inventory not found",
-				"NOT_FOUND",
-			))
-			return
-		}
-		if err.Error() == "cannot adjust inventory: product not found" {
-			c.JSON(http.StatusNotFound, model.NewErrorResponse(
-				err.Error(),
-				"PRODUCT_NOT_FOUND",
-			))
-			return
-		}
-		c.JSON(http.StatusBadRequest, model.NewErrorResponse(
-			err.Error(),
-			"ADJUST_FAILED",
-		))
+		HandleError(c, err)
 		return
 	}
 

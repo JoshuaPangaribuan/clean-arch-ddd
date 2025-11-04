@@ -8,6 +8,7 @@ import (
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/product"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/infrastructure/persistence/sqlcgen"
+	apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 )
 
 // ProductRepositoryImpl implements the product.ProductRepository interface
@@ -33,7 +34,11 @@ func (r *ProductRepositoryImpl) Create(ctx context.Context, prod *product.Produc
 		UpdatedAt:     prod.UpdatedAt(),
 	}
 
-	return r.queries.CreateProduct(ctx, params)
+	err := r.queries.CreateProduct(ctx, params)
+	if err != nil {
+		return apperrors.WrapDatabaseError(err)
+	}
+	return nil
 }
 
 // GetByID retrieves a product by its ID from the database
@@ -43,7 +48,7 @@ func (r *ProductRepositoryImpl) GetByID(ctx context.Context, id string) (*produc
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil // Product not found
 		}
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	return r.toDomainProduct(dbProduct)
@@ -59,12 +64,20 @@ func (r *ProductRepositoryImpl) Update(ctx context.Context, prod *product.Produc
 		UpdatedAt:     prod.UpdatedAt(),
 	}
 
-	return r.queries.UpdateProduct(ctx, params)
+	err := r.queries.UpdateProduct(ctx, params)
+	if err != nil {
+		return apperrors.WrapDatabaseError(err)
+	}
+	return nil
 }
 
 // Delete removes a product from the database
 func (r *ProductRepositoryImpl) Delete(ctx context.Context, id string) error {
-	return r.queries.DeleteProduct(ctx, id)
+	err := r.queries.DeleteProduct(ctx, id)
+	if err != nil {
+		return apperrors.WrapDatabaseError(err)
+	}
+	return nil
 }
 
 // List retrieves all products with pagination
@@ -76,7 +89,7 @@ func (r *ProductRepositoryImpl) List(ctx context.Context, limit, offset int) ([]
 
 	dbProducts, err := r.queries.ListProducts(ctx, params)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.WrapDatabaseError(err)
 	}
 
 	products := make([]*product.Product, 0, len(dbProducts))

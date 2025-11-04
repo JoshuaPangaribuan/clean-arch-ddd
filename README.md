@@ -163,6 +163,10 @@ curl http://localhost:8080/api/v1/products/{product-id}
 │   └── ProductRepository.go
 │
 ├── pkg/                             # Public reusable code
+│   └── errors/                      # Smart error handling package
+│       ├── codes.go                 # Error codes and registry
+│       ├── error.go                 # AppError type and functions
+│       └── helpers.go               # Helper functions
 ├── api/                             # API documentation
 ├── docker-compose.yml               # Local development environment
 ├── Makefile                         # Common commands
@@ -187,6 +191,118 @@ make sqlc-generate   # Generate sqlc code
 make generate-mocks  # Generate mocks for testing
 make clean           # Clean build artifacts
 ```
+
+## 🔧 Error Handling
+
+This project uses a centralized error handling system located in `pkg/errors` that provides:
+
+- **Structured error codes** with HTTP status mapping
+- **Stack trace capture** for debugging
+- **Easy extensibility** for adding new error types
+- **Consistent error responses** across the application
+
+### Using Error Codes
+
+The error system uses predefined error codes that map to HTTP status codes:
+
+```go
+import apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
+
+// Create a new error with a code
+err := apperrors.New(apperrors.CodeNotFound, "Resource not found")
+
+// Wrap an existing error
+err := apperrors.Wrap(originalErr, apperrors.CodeInvalidInput, "Invalid input")
+
+// Check error codes
+if apperrors.Is(err, apperrors.CodeNotFound) {
+    // Handle not found
+}
+```
+
+### Available Error Codes
+
+**Generic Errors:**
+- `CodeInternalError` (500) - Internal server error
+- `CodeInvalidInput` (400) - Invalid input provided
+- `CodeNotFound` (404) - Resource not found
+- `CodeConflict` (409) - Resource conflict
+- `CodeValidation` (400) - Validation error
+
+**Product Domain:**
+- `CodeProductNotFound` (404)
+- `CodeProductAlreadyExists` (409)
+- `CodeInvalidProductID` (400)
+- `CodeInvalidProductName` (400)
+- `CodeInvalidPrice` (400)
+
+**Inventory Domain:**
+- `CodeInventoryNotFound` (404)
+- `CodeInventoryExists` (409)
+- `CodeInsufficientStock` (400)
+- `CodeInvalidQuantity` (400)
+- `CodeInvalidAdjustment` (400)
+
+**Persistence Errors:**
+- `CodeDatabaseError` (500)
+- `CodeDatabaseConnection` (503)
+- `CodeQueryFailed` (500)
+- `CodeTransactionFailed` (500)
+
+### Adding New Error Codes
+
+To add a new error code, simply register it:
+
+```go
+import apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
+
+// Define your error code
+const CodeCustomError = apperrors.ErrorCode("CUSTOM_ERROR")
+
+// Register it with HTTP status and description
+apperrors.RegisterErrorCode(CodeCustomError, 400, "Custom error description")
+
+// Use it
+err := apperrors.New(CodeCustomError, "Something went wrong")
+```
+
+### Error Handling in Handlers
+
+HTTP handlers automatically convert errors to appropriate HTTP responses:
+
+```go
+func (h *ProductHandler) Create(c *gin.Context) {
+    // ... validation ...
+    
+    output, err := h.createUseCase.Execute(ctx, input)
+    if err != nil {
+        HandleError(c, err)  // Automatically maps to correct HTTP status
+        return
+    }
+    
+    // Success response
+    c.JSON(http.StatusCreated, model.NewSuccessResponse(...))
+}
+```
+
+### Database Error Wrapping
+
+Database errors are automatically wrapped with appropriate error codes:
+
+```go
+import apperrors "github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
+
+err := r.queries.CreateProduct(ctx, params)
+if err != nil {
+    return apperrors.WrapDatabaseError(err)  // Automatically maps DB errors
+}
+```
+
+This handles:
+- `sql.ErrNoRows` → `CodeNotFound`
+- Duplicate key violations → `CodeConflict`
+- Connection errors → `CodeDatabaseConnection`
+- Other database errors → `CodeDatabaseError`
 
 ## 📝 How to Add New Features
 

@@ -1,8 +1,9 @@
 package inventory
 
 import (
-	"errors"
 	"time"
+
+	"github.com/JoshuaPangaribuan/clean-arch-ddd/pkg/errors"
 )
 
 // Inventory represents an inventory entity in the domain
@@ -19,10 +20,10 @@ type Inventory struct {
 // NewInventory creates a new Inventory entity with validation
 func NewInventory(id, productID string, quantity int, location string) (*Inventory, error) {
 	if id == "" {
-		return nil, errors.New("inventory id cannot be empty")
+		return nil, errors.New(errors.CodeInvalidInput, "inventory id cannot be empty")
 	}
 	if productID == "" {
-		return nil, errors.New("product id cannot be empty")
+		return nil, errors.New(errors.CodeInvalidInput, "product id cannot be empty")
 	}
 	if quantity < 0 {
 		return nil, ErrInvalidQuantity
@@ -113,7 +114,7 @@ func (i *Inventory) Release(quantity int) error {
 		return ErrInvalidQuantity
 	}
 	if i.reservedQuantity < quantity {
-		return errors.New("cannot release more than reserved quantity")
+		return errors.New(errors.CodeInvalidQuantity, "cannot release more than reserved quantity")
 	}
 	i.reservedQuantity -= quantity
 	i.updatedAt = time.Now()
@@ -128,7 +129,7 @@ func (i *Inventory) AdjustQuantity(adjustment int) error {
 	}
 	// Ensure we don't go below reserved quantity
 	if newQuantity < i.reservedQuantity {
-		return errors.New("cannot adjust quantity below reserved amount")
+		return errors.New(errors.CodeInvalidAdjustment, "cannot adjust quantity below reserved amount")
 	}
 	i.quantity = newQuantity
 	i.updatedAt = time.Now()
