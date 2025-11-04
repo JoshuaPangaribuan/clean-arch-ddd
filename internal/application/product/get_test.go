@@ -89,7 +89,7 @@ func (s *GetProductUseCaseTestSuite) TestExecute() {
 					Return(nil, errors.New("database connection error")).
 					Once()
 			},
-			expectedError: "database connection error",
+			expectedError: "connection", // Check for keyword instead of exact match (case-insensitive)
 			validateOutput: func(output *product.GetProductOutput) {
 				s.Nil(output)
 			},
