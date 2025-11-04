@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/product"
 	"github.com/JoshuaPangaribuan/clean-arch-ddd/internal/infrastructure/persistence/sqlcgen"
@@ -26,7 +27,7 @@ func (r *ProductRepositoryImpl) Create(ctx context.Context, prod *product.Produc
 	params := sqlcgen.CreateProductParams{
 		ID:            prod.ID(),
 		Name:          prod.Name(),
-		PriceAmount:   prod.Price().Amount(),
+		PriceAmount:   strconv.FormatFloat(prod.Price().Amount(), 'f', -1, 64),
 		PriceCurrency: prod.Price().Currency(),
 		CreatedAt:     prod.CreatedAt(),
 		UpdatedAt:     prod.UpdatedAt(),
@@ -53,7 +54,7 @@ func (r *ProductRepositoryImpl) Update(ctx context.Context, prod *product.Produc
 	params := sqlcgen.UpdateProductParams{
 		ID:            prod.ID(),
 		Name:          prod.Name(),
-		PriceAmount:   prod.Price().Amount(),
+		PriceAmount:   strconv.FormatFloat(prod.Price().Amount(), 'f', -1, 64),
 		PriceCurrency: prod.Price().Currency(),
 		UpdatedAt:     prod.UpdatedAt(),
 	}
@@ -92,7 +93,12 @@ func (r *ProductRepositoryImpl) List(ctx context.Context, limit, offset int) ([]
 
 // toDomainProduct converts a database product model to a domain product entity
 func (r *ProductRepositoryImpl) toDomainProduct(dbProduct sqlcgen.Product) (*product.Product, error) {
-	price, err := product.NewPrice(dbProduct.PriceAmount, dbProduct.PriceCurrency)
+	priceAmount, err := strconv.ParseFloat(dbProduct.PriceAmount, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	price, err := product.NewPrice(priceAmount, dbProduct.PriceCurrency)
 	if err != nil {
 		return nil, err
 	}
@@ -105,4 +111,3 @@ func (r *ProductRepositoryImpl) toDomainProduct(dbProduct sqlcgen.Product) (*pro
 		dbProduct.UpdatedAt,
 	), nil
 }
-

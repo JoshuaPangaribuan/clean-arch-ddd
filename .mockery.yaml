@@ -1,10 +1,10 @@
 with-expecter: true
+outpkg: mocks
 packages:
   github.com/JoshuaPangaribuan/clean-arch-ddd/internal/domain/product:
     interfaces:
       ProductRepository:
         config:
           dir: "mocks"
-          filename: "ProductRepository.go"
-          package: "mocks"
+          filename: "mock_ProductRepository.go"
 

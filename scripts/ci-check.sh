@@ -14,6 +14,17 @@ fi
 
 echo "✅ Go version: $(go version)"
 
+# Generate sqlc code
+echo "📦 Generating sqlc code..."
+if ! command -v sqlc &> /dev/null; then
+    echo "Installing sqlc..."
+    go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+fi
+sqlc generate || {
+    echo "❌ Error: Failed to generate sqlc code"
+    exit 1
+}
+
 # Generate mocks
 echo "📦 Generating mocks..."
 if ! command -v mockery &> /dev/null; then

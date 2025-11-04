@@ -16,6 +16,19 @@ if %ERRORLEVEL% neq 0 (
 echo ✅ Go version:
 go version
 
+REM Generate sqlc code
+echo 📦 Generating sqlc code...
+where sqlc >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo Installing sqlc...
+    go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+)
+sqlc generate
+if %ERRORLEVEL% neq 0 (
+    echo ❌ Error: Failed to generate sqlc code
+    exit /b 1
+)
+
 REM Generate mocks
 echo 📦 Generating mocks...
 where mockery >nul 2>&1

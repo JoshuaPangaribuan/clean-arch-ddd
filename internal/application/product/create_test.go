@@ -13,12 +13,12 @@ import (
 
 type CreateProductUseCaseTestSuite struct {
 	suite.Suite
-	mockRepo *mocks.ProductRepository
+	mockRepo *mocks.MockProductRepository
 	useCase  *product.CreateProductUseCase
 }
 
 func (s *CreateProductUseCaseTestSuite) SetupTest() {
-	s.mockRepo = mocks.NewProductRepository(s.T())
+	s.mockRepo = mocks.NewMockProductRepository(s.T())
 	s.useCase = product.NewCreateProductUseCase(s.mockRepo)
 }
 
